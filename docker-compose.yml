@@ -1,0 +1,109 @@
+services:
+  # MySQL Database
+  mysql:
+    image: mysql:8.0
+    container_name: yt_downloader_mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: yt_downloader
+      MYSQL_USER: ytuser
+      MYSQL_PASSWORD: ytpassword
+    ports:
+      - '3306:3306'
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - yt_network
+    healthcheck:
+      test: ['CMD', 'mysqladmin', 'ping', '-h', 'localhost']
+      timeout: 20s
+      retries: 10
+
+  # Redis
+  redis:
+    image: redis:7-alpine
+    container_name: yt_downloader_redis
+    ports:
+      - '6379:6379'
+    volumes:
+      - redis_data:/data
+    networks:
+      - yt_network
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      timeout: 10s
+      retries: 5
+
+  # Flask Web Application
+  web:
+    build: .
+    container_name: yt_downloader_web
+    ports:
+      - '5000:5000'
+    environment:
+      - DATABASE_URL=mysql+pymysql://ytuser:ytpassword@mysql:3306/yt_downloader
+      - REDIS_URL=redis://redis:6379/0
+      - ZING_PROXY_TOKEN=${ZING_PROXY_TOKEN}
+      - SPOTIFY_CLIENT_ID=${SPOTIFY_CLIENT_ID}
+      - SPOTIFY_CLIENT_SECRET=${SPOTIFY_CLIENT_SECRET}
+      - WASABI_ACCESS_KEY=${WASABI_ACCESS_KEY}
+      - WASABI_SECRET_KEY=${WASABI_SECRET_KEY}
+      - WASABI_BUCKET=${WASABI_BUCKET}
+    volumes:
+      - ./downloads:/tmp/yt-downloads
+      - ./logs:/app/logs
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - yt_network
+    restart: unless-stopped
+
+  # RQ Worker for background jobs
+  worker:
+    build: .
+    container_name: yt_downloader_worker
+    command: python worker.py
+    environment:
+      - DATABASE_URL=mysql+pymysql://ytuser:ytpassword@mysql:3306/yt_downloader
+      - REDIS_URL=redis://redis:6379/0
+      - ZING_PROXY_TOKEN=${ZING_PROXY_TOKEN}
+      - SPOTIFY_CLIENT_ID=${SPOTIFY_CLIENT_ID}
+      - SPOTIFY_CLIENT_SECRET=${SPOTIFY_CLIENT_SECRET}
+      - WASABI_ACCESS_KEY=${WASABI_ACCESS_KEY}
+      - WASABI_SECRET_KEY=${WASABI_SECRET_KEY}
+      - WASABI_BUCKET=${WASABI_BUCKET}
+    volumes:
+      - ./downloads:/tmp/yt-downloads
+      - ./logs:/app/logs
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - yt_network
+    restart: unless-stopped
+  nginx:
+    image: nginx
+    ports:
+      - '80:80'
+    volumes:
+      - ./docker/nginx.conf:/etc/nginx/conf.d/default.conf
+    #      - ./certbot:/etc/letsencrypt
+    depends_on:
+      - web
+    #      - certbot
+    networks:
+      - yt_network
+
+volumes:
+  mysql_data:
+  redis_data:
+
+networks:
+  yt_network:
+    driver: bridge
