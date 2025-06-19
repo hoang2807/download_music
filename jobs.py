@@ -32,23 +32,24 @@ def download_audio_job(download_id, search_keyword):
     expected_file = None
 
     try:
-        search_cmd = [
-            YT_DLP_PATH, '--proxy', proxy, '--no-check-certificate', '--default-search', 'ytmusic',
-            '--skip-download', '--dump-json', f'ytsearch1:{search_keyword} official audio'
-        ]
         # search_cmd = [
-        #     YT_DLP_PATH,
-        #     '--flat-playlist',
-        #     '--no-playlist',
-        #     '--dump-json',
-        #     '--retries', '1',
-        #     '--socket-timeout', '5',
-        #     '--no-check-certificate',
-        #     '--default-search', 'ytmusic',
-        #     '--quiet',
-        #     '--no-warnings',
-        #     f'ytsearch1:{search_keyword} official audio'
+        #     YT_DLP_PATH, '--proxy', proxy, '--no-check-certificate', '--default-search', 'ytmusic',
+        #     '--skip-download', '--dump-json', f'ytsearch1:{search_keyword} official audio'
         # ]
+        search_cmd = [
+            YT_DLP_PATH,
+            '--proxy', proxy,
+            '--flat-playlist',
+            '--no-playlist',
+            '--dump-json',
+            '--retries', '1',
+            '--socket-timeout', '5',
+            '--no-check-certificate',
+            '--default-search', 'ytmusic',
+            '--quiet',
+            '--no-warnings',
+            f'ytsearch1:{search_keyword} official audio'
+        ]
         print('zo here123456 download_audio_job', file=sys.stderr)
         result = subprocess.run(search_cmd, capture_output=True, text=True, check=True, timeout=180)
         video = json.loads(result.stdout)
@@ -56,18 +57,40 @@ def download_audio_job(download_id, search_keyword):
         title = video.get('title')
         slug = slugify(title)
         output_path = os.path.join(TEMP_DIR, f'{slug}.%(ext)s')
-        expected_file = os.path.join(TEMP_DIR, f'{slug}.mp3')
+        expected_file = os.path.join(TEMP_DIR, f'{slug}.webm')
 
         if os.path.exists(expected_file):
             os.remove(expected_file)
 
+        # download_cmd = [
+        #     YT_DLP_PATH, '--proxy', proxy, '--no-check-certificate', '--audio-format', 'mp3',
+        #     '--extract-audio', '-o', output_path, video_url
+        # ]
         download_cmd = [
-            YT_DLP_PATH, '--proxy', proxy, '--no-check-certificate', '--audio-format', 'mp3',
-            '--extract-audio', '-o', output_path, video_url
+            YT_DLP_PATH,
+            '--proxy', proxy,
+            '--no-check-certificate',
+            '--no-part',
+            '--no-continue',
+            '--socket-timeout', '5',
+            '--retries', '1',
+            '--fragment-retries', '1',
+            '--concurrent-fragments', '6',
+            '--downloader', 'aria2c',
+            '--downloader-args', 'aria2c:-x 16 -s 16 -k 1M',
+            '--no-playlist',
+            '--quiet',
+            '--no-warnings',
+            '-f', '251',
+            '-o', output_path,
+            video_url
         ]
         subprocess.run(download_cmd, capture_output=True, text=True, check=True, timeout=600)
-
+        print('outputPath', file=sys.stderr)
+        print(output_path, file=sys.stderr)
         if not os.path.exists(expected_file):
+            print('download_audio_job.expected_file', file=sys.stderr)
+            print(expected_file, file=sys.stderr)
             raise Exception("File not found after download")
 
         file_name = f"{slug}_{download_id}.mp3"
