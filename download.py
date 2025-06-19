@@ -1,17 +1,11 @@
 import os
 import re
-import json
 import sys
-import logging
 import requests
-import subprocess
-from datetime import datetime
-from slugify import slugify
 from flask import Flask, request, jsonify
 from redis import Redis
 from rq import Queue
-from sqlalchemy import create_engine, Column, String, DateTime
-from sqlalchemy.orm import sessionmaker, declarative_base
+from jobs import Session, Download, download_audio_job
 
 # --- CONFIG ---
 YT_DLP_PATH = "/usr/local/bin/yt-dlp"
@@ -25,19 +19,6 @@ app = Flask(__name__)
 # q = Queue(connection=Redis())
 redis_url = os.getenv("REDIS_URL", "redis://localhost:6379")
 q = Queue(connection=Redis.from_url(redis_url))
-# --- SQLALCHEMY SETUP ---
-Base = declarative_base()
-engine = create_engine(DATABASE_URL)
-Session = sessionmaker(bind=engine)
-
-class Download(Base):
-    __tablename__ = 'downloads'
-    download_id = Column(String(64), primary_key=True)
-    url = Column(String(255))
-    status = Column(String(32))
-    file_name = Column(String(255))
-    file_path = Column(String(255))
-    updated_at = Column(DateTime, default=datetime.utcnow)
 
 # --- UTILS ---
 def get_spotify_track_info(spotify_url):
@@ -144,27 +125,26 @@ def download():
     with Session() as session:
         # print('check session', file=sys.stderr)
         # print(session, file=sys.stderr)
-        # download = session.query(Download).filter_by(download_id=download_id).first()
+        downloadMusic = session.query(Download).filter_by(download_id=download_id).first()
         # print('check download', file=sys.stderr)
         # print(download, file=sys.stderr)
-        # if not download:
-        download_music = Download(download_id=download_id, url=url, status='pending')
-        session.add(download_music)
-        session.commit()
-        from jobs import download_audio_job
-        q.enqueue(download_audio_job, download_id, keyword)
+        if not downloadMusic:
+            downloadMusic = Download(download_id=download_id, url=url, status='pending')
+            session.add(downloadMusic)
+            session.commit()
+            q.enqueue(download_audio_job, download_id, keyword)
 
         print('download_id', file=sys.stderr)
-        print(download_music.status, file=sys.stderr)
-        print(download_music, file=sys.stderr)
-        print(download_music.file_path, file=sys.stderr)
-        if download_music.status == 'completed':
+        print(downloadMusic.status, file=sys.stderr)
+        print(downloadMusic, file=sys.stderr)
+        print(downloadMusic.file_path, file=sys.stderr)
+        if downloadMusic.status == 'completed':
             return jsonify({
                 'status': 'completed',
                 'download_id': download_id,
-                'file': download.file_path
+                'file': downloadMusic.file_path
             })
-        elif download_music.status == 'failed':
+        elif downloadMusic.status == 'failed':
             return jsonify({
                 'status': 'failed',
                 'download_id': download_id,
