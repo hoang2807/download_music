@@ -27,15 +27,28 @@ def upload_to_wasabi(filepath, filename):
     return f"https://s3.ap-southeast-1.wasabisys.com/merrychill/{filename}"
 
 def download_audio_job(download_id, search_keyword):
-    # proxy = get_proxy_from_zingproxy()
+    proxy = get_proxy_from_zingproxy()
     os.makedirs(TEMP_DIR, exist_ok=True)
     expected_file = None
 
     try:
         search_cmd = [
-            YT_DLP_PATH, '--no-check-certificate', '--default-search', 'ytmusic',
+            YT_DLP_PATH, '--proxy', proxy, '--no-check-certificate', '--default-search', 'ytmusic',
             '--skip-download', '--dump-json', f'ytsearch1:{search_keyword} official audio'
         ]
+        # search_cmd = [
+        #     YT_DLP_PATH,
+        #     '--flat-playlist',
+        #     '--no-playlist',
+        #     '--dump-json',
+        #     '--retries', '1',
+        #     '--socket-timeout', '5',
+        #     '--no-check-certificate',
+        #     '--default-search', 'ytmusic',
+        #     '--quiet',
+        #     '--no-warnings',
+        #     f'ytsearch1:{search_keyword} official audio'
+        # ]
         print('zo here123456 download_audio_job', file=sys.stderr)
         result = subprocess.run(search_cmd, capture_output=True, text=True, check=True, timeout=180)
         video = json.loads(result.stdout)
@@ -49,7 +62,7 @@ def download_audio_job(download_id, search_keyword):
             os.remove(expected_file)
 
         download_cmd = [
-            YT_DLP_PATH, '--no-check-certificate', '--audio-format', 'mp3',
+            YT_DLP_PATH, '--proxy', proxy, '--no-check-certificate', '--audio-format', 'mp3',
             '--extract-audio', '-o', output_path, video_url
         ]
         subprocess.run(download_cmd, capture_output=True, text=True, check=True, timeout=600)
