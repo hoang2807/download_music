@@ -71,7 +71,6 @@ def upload_to_wasabi(filepath, filename):
         )
 
         # s3.upload_file(filepath, WASABI_BUCKET, filename)
-        print("check s3", file=sys.stderr)
         # s3.upload_file(filepath, WASABI_BUCKET, filename, ExtraArgs={ 'ContentType': 'audio/mpeg', 'ACL': 'public-read' })
 
         # Upload file using put_object with necessary arguments
@@ -91,7 +90,6 @@ def upload_to_wasabi(filepath, filename):
 
         print(f"Successfully uploaded {filename} to Wasabi", file=sys.stderr)
 
-        print(filepath, file=sys.stderr)
         return f"https://s3.ap-southeast-1.wasabisys.com/{WASABI_BUCKET}/{filename}"
     except FileNotFoundError:
         print("The file was not found:", filepath, file=sys.stderr)
@@ -143,7 +141,6 @@ def download_audio_job(download_id, search_keyword):
             '--no-warnings',
             f'ytsearch1:{search_keyword} official audio'
         ]
-        print('zo here123456 download_audio_job', file=sys.stderr)
         result = subprocess.run(search_cmd, capture_output=True, text=True, check=True, timeout=180)
         video = json.loads(result.stdout)
         video_url = video.get('webpage_url')
@@ -175,8 +172,6 @@ def download_audio_job(download_id, search_keyword):
             video_url
         ]
         subprocess.run(download_cmd, capture_output=True, text=True, check=True, timeout=600)
-        print('outputPath', file=sys.stderr)
-        print(output_path, file=sys.stderr)
 
         matching_files = glob.glob(os.path.join(TEMP_DIR, f'{slug}.*'))
         for file in matching_files:
@@ -190,13 +185,9 @@ def download_audio_job(download_id, search_keyword):
         # if not os.path.exists(expected_file):
         #     raise Exception("File not found after download")
 
-        print('download_audio_job.expected_file', file=sys.stderr)
-        print(expected_file, file=sys.stderr)
         file_name = f"{slug}_{download_id}.mp3"
         public_url = upload_to_wasabi(expected_file, file_name)
 
-        print('zo here123 download_audio_job', file=sys.stderr)
-        print(public_url, file=sys.stderr)
         with Session() as session:
             download = session.query(Download).filter_by(download_id=download_id).first()
             if download:
@@ -205,10 +196,6 @@ def download_audio_job(download_id, search_keyword):
                 download.file_path = public_url
                 download.updated_at = datetime.utcnow()
                 session.commit()
-            print('check download hehe', file=sys.stderr)
-            print(download, file=sys.stderr)
-            print(download.status, file=sys.stderr)
-            print(download.file_name, file=sys.stderr)
 
     except Exception:
         with Session() as session:

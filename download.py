@@ -33,7 +33,7 @@ def get_spotify_track_info(spotify_url):
     token = token_res.json().get('access_token')
     res = requests.get(f'https://api.spotify.com/v1/tracks/{track_id}',
                        headers={'Authorization': f'Bearer {token}'})
-    print(res, file=sys.stderr)
+
     return res.json() if res.ok else None
 
 # def get_proxy_from_zingproxy():
@@ -123,21 +123,14 @@ def download():
     download_id = track_info['id']
 
     with Session() as session:
-        # print('check session', file=sys.stderr)
-        # print(session, file=sys.stderr)
         downloadMusic = session.query(Download).filter_by(download_id=download_id).first()
-        # print('check download', file=sys.stderr)
-        # print(download, file=sys.stderr)
+
         if not downloadMusic:
             downloadMusic = Download(download_id=download_id, url=url, status='pending')
             session.add(downloadMusic)
             session.commit()
             q.enqueue(download_audio_job, download_id, keyword)
 
-        print('download_id', file=sys.stderr)
-        print(downloadMusic.status, file=sys.stderr)
-        print(downloadMusic, file=sys.stderr)
-        print(downloadMusic.file_path, file=sys.stderr)
         if downloadMusic.status == 'completed':
             return jsonify({
                 'status': 'completed',
