@@ -4,7 +4,10 @@ import sys
 import requests
 from flask import Flask, request, jsonify
 from redis import Redis
-from rq import Queue
+from rq import Queue, Worker
+from rq.job import Job
+from rq.registry import FailedJobRegistry, FinishedJobRegistry, StartedJobRegistry
+
 from jobs import Session, Download, download_audio_job
 
 # --- CONFIG ---
@@ -18,7 +21,8 @@ DATABASE_URL = os.getenv("DATABASE_URL")
 app = Flask(__name__)
 # q = Queue(connection=Redis())
 redis_url = os.getenv("REDIS_URL", "redis://localhost:6379")
-q = Queue(connection=Redis.from_url(redis_url))
+redis_conn = Redis.from_url(redis_url)
+q = Queue(connection=redis_conn)
 
 # --- UTILS ---
 def get_spotify_track_info(spotify_url):
@@ -36,77 +40,328 @@ def get_spotify_track_info(spotify_url):
 
     return res.json() if res.ok else None
 
-# def get_proxy_from_zingproxy():
-#     try:
-#         res = requests.get('https://api.zingproxy.com/proxy/dan-cu-viet-nam/running',
-#                            headers={'Authorization': f'Bearer {ZING_PROXY_TOKEN}'})
-#         proxy = res.json().get('proxies', [])[0]
-#         return f"http://{proxy['username']}:{proxy['password']}@{proxy['hostIp']}:{proxy['portHttp']}"
-#     except:
-#         return None
+# --- QUEUE MONITORING FUNCTIONS ---
+def get_queue_stats():
+    """Lấy thống kê tổng quan về queue"""
+    stats = {
+        'total_jobs': len(q),
+        'pending_jobs': len(q),
+        'workers': len(Worker.all(connection=redis_conn)),
+        'active_workers': len(Worker.all(connection=redis_conn, state='busy')),
+        'failed_jobs': len(FailedJobRegistry(connection=redis_conn)),
+        'finished_jobs': len(FinishedJobRegistry(connection=redis_conn)),
+        'started_jobs': len(StartedJobRegistry(connection=redis_conn))
+    }
+    return stats
 
-def upload_to_wasabi(filepath, filename):
-    # Dummy - replace with boto3 or real upload
-    return f"https://your-wasabi-url.com/{filename}"
+def get_job_details(job_id):
+    """Lấy chi tiết của một job cụ thể"""
+    try:
+        job = Job.fetch(job_id, connection=redis_conn)
+        return {
+            'id': job.id,
+            'status': job.get_status(),
+            'created_at': job.created_at.isoformat() if job.created_at else None,
+            'started_at': job.started_at.isoformat() if job.started_at else None,
+            'ended_at': job.ended_at.isoformat() if job.ended_at else None,
+            'result': str(job.result) if job.result else None,
+            'exc_info': job.exc_info if job.exc_info else None,
+            'meta': job.meta,
+            'timeout': job.timeout,
+            'func_name': job.func_name
+        }
+    except Exception as e:
+        return {'error': str(e)}
 
-# --- DOWNLOAD JOB ---
-# def download_audio_job(download_id, search_keyword):
-#     print('zo here123 download_audio_job', file=sys.stderr)
-#     proxy = get_proxy_from_zingproxy()
-#     os.makedirs(TEMP_DIR, exist_ok=True)
-#
-#     try:
-#         search_cmd = [
-#             YT_DLP_PATH, '--proxy', proxy, '--no-check-certificate', '--default-search', 'ytmusic',
-#             '--skip-download', '--dump-json', f'ytsearch1:{search_keyword} official audio'
-#         ]
-#
-#         print('zo here123', file=sys.stderr)
-#         result = subprocess.run(search_cmd, capture_output=True, text=True, check=True, timeout=180)
-#
-#         print('result', file=sys.stderr)
-#         print(result.stdout, file=sys.stderr)
-#         video = json.loads(result.stdout)
-#         video_url = video.get('webpage_url')
-#         title = video.get('title')
-#         slug = slugify(title)
-#         output_path = os.path.join(TEMP_DIR, f'{slug}.%(ext)s')
-#         expected_file = os.path.join(TEMP_DIR, f'{slug}.mp3')
-#
-#         if os.path.exists(expected_file):
-#             os.remove(expected_file)
-#
-#         download_cmd = [
-#             YT_DLP_PATH, '--proxy', proxy, '--no-check-certificate', '--audio-format', 'mp3',
-#             '--extract-audio', '-o', output_path, video_url
-#         ]
-#         subprocess.run(download_cmd, capture_output=True, text=True, check=True, timeout=600)
-#
-#         if not os.path.exists(expected_file):
-#             raise Exception("File not found after download")
-#
-#         file_name = f"{slug}_{download_id}.mp3"
-#         public_url = upload_to_wasabi(expected_file, file_name)
-#
-#         with Session() as session:
-#             download = session.query(Download).filter_by(download_id=download_id).first()
-#             if download:
-#                 download.status = 'completed'
-#                 download.file_name = file_name
-#                 download.file_path = public_url
-#                 download.updated_at = datetime.utcnow()
-#                 session.commit()
-#
-#     except Exception as e:
-#         with Session() as session:
-#             download = session.query(Download).filter_by(download_id=download_id).first()
-#             if download:
-#                 download.status = 'failed'
-#                 session.commit()
-#         raise
-#     finally:
-#         if os.path.exists(expected_file):
-#             os.remove(expected_file)
+
+def get_failed_jobs():
+    """Lấy danh sách các job đã thất bại"""
+    failed_registry = FailedJobRegistry(connection=redis_conn)
+    failed_jobs = []
+
+    for job_id in failed_registry.get_job_ids():
+        job_details = get_job_details(job_id)
+        failed_jobs.append(job_details)
+
+    return failed_jobs
+
+
+def get_finished_jobs():
+    """Lấy danh sách các job đã hoàn thành"""
+    finished_registry = FinishedJobRegistry(connection=redis_conn)
+    finished_jobs = []
+
+    for job_id in finished_registry.get_job_ids():
+        job_details = get_job_details(job_id)
+        finished_jobs.append(job_details)
+
+    return finished_jobs
+
+
+def get_pending_jobs():
+    """Lấy danh sách các job đang chờ"""
+    pending_jobs = []
+
+    for job in q.jobs:
+        job_details = get_job_details(job.id)
+        pending_jobs.append(job_details)
+
+    return pending_jobs
+
+
+def get_started_jobs():
+    """Lấy danh sách các job đang chạy"""
+    started_registry = StartedJobRegistry(connection=redis_conn)
+    started_jobs = []
+
+    for job_id in started_registry.get_job_ids():
+        job_details = get_job_details(job_id)
+        started_jobs.append(job_details)
+
+    return started_jobs
+
+
+# --- MONITORING ROUTES ---
+@app.route('/api/queue/stats', methods=['GET'])
+def queue_stats():
+    """API endpoint để lấy thống kê queue"""
+    try:
+        stats = get_queue_stats()
+        return jsonify(stats)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/queue/jobs', methods=['GET'])
+def list_jobs():
+    """API endpoint để lấy danh sách tất cả jobs theo trạng thái"""
+    try:
+        status = request.args.get('status', 'all')
+
+        if status == 'failed':
+            jobs = get_failed_jobs()
+        elif status == 'finished':
+            jobs = get_finished_jobs()
+        elif status == 'pending':
+            jobs = get_pending_jobs()
+        elif status == 'started':
+            jobs = get_started_jobs()
+        else:
+            # Lấy tất cả jobs
+            jobs = {
+                'failed': get_failed_jobs(),
+                'finished': get_finished_jobs(),
+                'pending': get_pending_jobs(),
+                'started': get_started_jobs()
+            }
+
+        return jsonify(jobs)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/queue/job/<job_id>', methods=['GET'])
+def get_job_status(job_id):
+    """API endpoint để lấy trạng thái của một job cụ thể"""
+    try:
+        job_details = get_job_details(job_id)
+        return jsonify(job_details)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/queue/job/<job_id>/requeue', methods=['POST'])
+def requeue_job(job_id):
+    """API endpoint để requeue một job đã thất bại"""
+    try:
+        job = Job.fetch(job_id, connection=redis_conn)
+        if job.get_status() == 'failed':
+            job.requeue()
+            return jsonify({'message': f'Job {job_id} đã được requeue thành công'})
+        else:
+            return jsonify({'error': 'Job không ở trạng thái failed'}), 400
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/queue/job/<job_id>/delete', methods=['DELETE'])
+def delete_job(job_id):
+    """API endpoint để xóa một job"""
+    try:
+        job = Job.fetch(job_id, connection=redis_conn)
+        job.delete()
+        return jsonify({'message': f'Job {job_id} đã được xóa thành công'})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/queue/clear', methods=['POST'])
+def clear_queue():
+    """API endpoint để clear queue"""
+    try:
+        queue_type = request.json.get('type', 'all')
+
+        if queue_type == 'failed':
+            failed_registry = FailedJobRegistry(connection=redis_conn)
+            for job_id in failed_registry.get_job_ids():
+                job = Job.fetch(job_id, connection=redis_conn)
+                job.delete()
+            return jsonify({'message': 'Đã xóa tất cả failed jobs'})
+        elif queue_type == 'finished':
+            finished_registry = FinishedJobRegistry(connection=redis_conn)
+            for job_id in finished_registry.get_job_ids():
+                job = Job.fetch(job_id, connection=redis_conn)
+                job.delete()
+            return jsonify({'message': 'Đã xóa tất cả finished jobs'})
+        elif queue_type == 'pending':
+            q.empty()
+            return jsonify({'message': 'Đã xóa tất cả pending jobs'})
+        else:
+            return jsonify({'error': 'Invalid queue type'}), 400
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+# --- DASHBOARD ROUTE ---
+@app.route('/dashboard')
+def dashboard():
+    """Simple HTML dashboard để monitor queue"""
+    return '''
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Queue Monitor Dashboard</title>
+        <style>
+            body { font-family: Arial, sans-serif; margin: 20px; }
+            .stats { display: flex; gap: 20px; margin-bottom: 20px; }
+            .stat-box { border: 1px solid #ddd; padding: 15px; border-radius: 5px; }
+            .job-list { margin-top: 20px; }
+            .job-item { border: 1px solid #eee; padding: 10px; margin: 5px 0; border-radius: 3px; }
+            .failed { border-left: 4px solid #ff4444; }
+            .finished { border-left: 4px solid #44ff44; }
+            .pending { border-left: 4px solid #ffaa44; }
+            .started { border-left: 4px solid #4444ff; }
+            button { padding: 5px 10px; margin: 2px; cursor: pointer; }
+        </style>
+    </head>
+    <body>
+        <h1>Queue Monitor Dashboard</h1>
+        <div id="stats" class="stats"></div>
+        <div>
+            <button onclick="loadJobs('all')">All Jobs</button>
+            <button onclick="loadJobs('pending')">Pending</button>
+            <button onclick="loadJobs('started')">Started</button>
+            <button onclick="loadJobs('finished')">Finished</button>
+            <button onclick="loadJobs('failed')">Failed</button>
+            <button onclick="loadStats()">Refresh Stats</button>
+        </div>
+        <div id="jobs" class="job-list"></div>
+
+        <script>
+            function loadStats() {
+                fetch('/api/queue/stats')
+                    .then(response => response.json())
+                    .then(data => {
+                        document.getElementById('stats').innerHTML = `
+                            <div class="stat-box">
+                                <h3>Total Jobs</h3>
+                                <p>${data.total_jobs}</p>
+                            </div>
+                            <div class="stat-box">
+                                <h3>Pending</h3>
+                                <p>${data.pending_jobs}</p>
+                            </div>
+                            <div class="stat-box">
+                                <h3>Started</h3>
+                                <p>${data.started_jobs}</p>
+                            </div>
+                            <div class="stat-box">
+                                <h3>Finished</h3>
+                                <p>${data.finished_jobs}</p>
+                            </div>
+                            <div class="stat-box">
+                                <h3>Failed</h3>
+                                <p>${data.failed_jobs}</p>
+                            </div>
+                            <div class="stat-box">
+                                <h3>Workers</h3>
+                                <p>${data.workers}</p>
+                            </div>
+                        `;
+                    });
+            }
+
+            function loadJobs(status) {
+                fetch(`/api/queue/jobs?status=${status}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        let html = '';
+                        if (status === 'all') {
+                            ['pending', 'started', 'finished', 'failed'].forEach(s => {
+                                if (data[s] && data[s].length > 0) {
+                                    html += `<h3>${s.toUpperCase()}</h3>`;
+                                    data[s].forEach(job => {
+                                        html += createJobHtml(job, s);
+                                    });
+                                }
+                            });
+                        } else {
+                            data.forEach(job => {
+                                html += createJobHtml(job, status);
+                            });
+                        }
+                        document.getElementById('jobs').innerHTML = html;
+                    });
+            }
+
+            function createJobHtml(job, status) {
+                return `
+                    <div class="job-item ${status}">
+                        <strong>Job ID:</strong> ${job.id}<br>
+                        <strong>Status:</strong> ${job.status}<br>
+                        <strong>Function:</strong> ${job.func_name}<br>
+                        <strong>Created:</strong> ${job.created_at || 'N/A'}<br>
+                        <strong>Started:</strong> ${job.started_at || 'N/A'}<br>
+                        <strong>Ended:</strong> ${job.ended_at || 'N/A'}<br>
+                        ${job.exc_info ? `<strong>Error:</strong> ${job.exc_info}<br>` : ''}
+                        ${status === 'failed' ? `<button onclick="requeueJob('${job.id}')">Requeue</button>` : ''}
+                        <button onclick="deleteJob('${job.id}')">Delete</button>
+                    </div>
+                `;
+            }
+
+            function requeueJob(jobId) {
+                fetch(`/api/queue/job/${jobId}/requeue`, {method: 'POST'})
+                    .then(response => response.json())
+                    .then(data => {
+                        alert(data.message || data.error);
+                        loadJobs('failed');
+                    });
+            }
+
+            function deleteJob(jobId) {
+                if (confirm('Are you sure you want to delete this job?')) {
+                    fetch(`/api/queue/job/${jobId}/delete`, {method: 'DELETE'})
+                        .then(response => response.json())
+                        .then(data => {
+                            alert(data.message || data.error);
+                            loadStats();
+                        });
+                }
+            }
+
+            // Load initial data
+            loadStats();
+            loadJobs('all');
+
+            // Auto refresh every 30 seconds
+            setInterval(() => {
+                loadStats();
+            }, 30000);
+        </script>
+    </body>
+    </html>
+    '''
 
 # --- ROUTE ---
 @app.route('/api/download', methods=['POST'])
