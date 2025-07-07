@@ -24,7 +24,7 @@ COPY requirements.txt .
 RUN pip install -r requirements.txt
 
 # Install python-dotenv for .env file support
-RUN pip install python-dotenv
+RUN pip install gunicorn python-dotenv
 
 # Copy application code
 COPY . .
@@ -36,4 +36,5 @@ RUN mkdir -p /tmp/yt-downloads /app/logs
 EXPOSE 5000
 
 # Default command
-CMD ["python", "download.py"]
+#CMD ["python", "download.py"]
+CMD ["gunicorn", "-w", "4", "-b", "0.0.0.0:5000", "download:app"]
