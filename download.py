@@ -367,15 +367,24 @@ def dashboard():
 @app.route('/api/download', methods=['POST'])
 def download():
     url = request.json.get('url')
+    name = request.json.get('name')
+    artists = request.json.get('artists')
+    id = request.json.get('id')
     if not url:
         return jsonify({'error': 'Missing URL'}), 400
 
-    track_info = get_spotify_track_info(url)
-    if not track_info:
-        return jsonify({'error': 'Invalid Spotify URL'}), 400
+    if not name:
+        return jsonify({'error': 'Missing name'}), 400
 
-    keyword = f"{track_info['name']} {track_info['artists'][0]['name']}"
-    download_id = track_info['id']
+    if not artists:
+        return jsonify({'error': 'Missing artists'}), 400
+
+    if not id:
+        return jsonify({'error': 'Missing id'}), 400
+
+
+    keyword = f"{name} {artists}"
+    download_id = id
 
     with Session() as session:
         downloadMusic = session.query(Download).filter_by(download_id=download_id).first()
@@ -384,7 +393,7 @@ def download():
             downloadMusic = Download(download_id=download_id, url=url, status='pending')
             session.add(downloadMusic)
             session.commit()
-            q.enqueue(download_audio_job, download_id, keyword)
+            q.enqueue(download_audio_job, download_id, keyword, url)
 
         if downloadMusic.status == 'completed':
             return jsonify({

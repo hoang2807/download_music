@@ -31,15 +31,24 @@ class Download(Base):
 YT_DLP_PATH = "/usr/local/bin/yt-dlp"
 TEMP_DIR = "/tmp/yt-downloads"
 ZING_PROXY_TOKEN = os.getenv("ZING_PROXY_TOKEN")
+DEFAULT_PROXY = "http://cZs0lhungn:v7u6FLJ2@103.125.189.149:8159"
+
 
 def get_proxy_from_zingproxy():
     try:
-        res = requests.get('https://api.zingproxy.com/proxy/dan-cu-viet-nam/running',
-                           headers={'Authorization': f'Bearer {ZING_PROXY_TOKEN}'})
-        proxy = res.json().get('proxies', [])[0]
-        return f"http://{proxy['username']}:{proxy['password']}@{proxy['hostIp']}:{proxy['portHttp']}"
-    except:
-        return None
+        res = requests.get(
+                'https://api.zingproxy.com/proxy/dan-cu-viet-nam/running',
+                headers={'Authorization': f'Bearer {ZING_PROXY_TOKEN}'}
+            )
+            proxies = res.json().get('proxies', [])
+            if proxies:
+                proxy = proxies[0]
+                return f"http://{proxy['username']}:{proxy['password']}@{proxy['hostIp']}:{proxy['portHttp']}"
+            else:
+                return DEFAULT_PROXY
+        except Exception as e:
+            # Log lỗi nếu cần: print(f"Proxy fetch error: {e}")
+            return DEFAULT_PROXY
 
 def upload_to_wasabi(filepath, filename):
     # Dummy - replace with boto3 or real upload
@@ -117,57 +126,33 @@ def upload_to_wasabi(filepath, filename):
         raise
 
 
-def download_audio_job(download_id, search_keyword):
+def download_audio_job(download_id, search_keyword, url):
     proxy = get_proxy_from_zingproxy()
     os.makedirs(TEMP_DIR, exist_ok=True)
     expected_file = None
 
     try:
-        # search_cmd = [
-        #     YT_DLP_PATH, '--proxy', proxy, '--no-check-certificate', '--default-search', 'ytmusic',
-        #     '--skip-download', '--dump-json', f'ytsearch1:{search_keyword} official audio'
-        # ]
-        search_cmd = [
-            YT_DLP_PATH,
-            '--proxy', proxy,
-            '--flat-playlist',
-            '--no-playlist',
-            '--dump-json',
-            '--retries', '1',
-            '--socket-timeout', '5',
-            '--no-check-certificate',
-            '--default-search', 'ytmusic',
-            '--quiet',
-            '--no-warnings',
-            f'ytsearch1:{search_keyword} official audio'
-        ]
-        result = subprocess.run(search_cmd, capture_output=True, text=True, check=True, timeout=180)
-        video = json.loads(result.stdout)
-        video_url = video.get('webpage_url')
-        title = video.get('title')
+
+        video_url = url
+        title = download_id
         slug = slugify(title)
         output_path = os.path.join(TEMP_DIR, f'{slug}.%(ext)s')
 
-        # download_cmd = [
-        #     YT_DLP_PATH, '--proxy', proxy, '--no-check-certificate', '--audio-format', 'mp3',
-        #     '--extract-audio', '-o', output_path, video_url
-        # ]
         download_cmd = [
             YT_DLP_PATH,
             '--proxy', proxy,
             '--no-check-certificate',
-            '--no-part',
             '--no-continue',
-            '--socket-timeout', '5',
-            '--retries', '1',
-            '--fragment-retries', '1',
-            '--concurrent-fragments', '6',
+            '--socket-timeout', '60',
+            '--retries', '3',
+            '--fragment-retries', '3',
+            '--concurrent-fragments', '8',
             '--downloader', 'aria2c',
-            '--downloader-args', 'aria2c:-x 16 -s 16 -k 1M',
+            '--downloader-args', 'aria2c:"-x 16 -s 16 -k 1M"',
             '--no-playlist',
             '--quiet',
             '--no-warnings',
-            '-f', '251',
+            '-f', 'bestaudio[ext=webm]/bestaudio/best',
             '-o', output_path,
             video_url
         ]
