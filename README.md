@@ -32,3 +32,5 @@ docker-compose run --rm certbot certonly \
   --no-eff-email \
   -d scraper.merrychill.com
 ```
+
+Note: Open port 80, 443
