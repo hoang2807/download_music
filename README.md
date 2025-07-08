@@ -16,3 +16,7 @@ Run command in terminal
 docker compose build (build image)
 docker compose up -d (chạy các container ở background)
 ```
+
+phpMyAdmin: localhost:8080
+username: ytuser
+password: ytpassword

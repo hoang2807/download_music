@@ -100,6 +100,20 @@ services:
     #      - certbot
     networks:
       - yt_network
+  # phpMyAdmin for managing MySQL
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    container_name: yt_downloader_phpmyadmin
+    environment:
+      PMA_HOST: mysql
+      PMA_PORT: 3306
+      MYSQL_ROOT_PASSWORD: rootpassword
+    ports:
+      - '8080:80'  # Truy cập phpMyAdmin qua cổng 8080
+    networks:
+      - yt_network
+    depends_on:
+      - mysql
 
 volumes:
   mysql_data:
