@@ -40,15 +40,17 @@ def get_proxy_from_zingproxy():
                 'https://api.zingproxy.com/proxy/dan-cu-viet-nam/running',
                 headers={'Authorization': f'Bearer {ZING_PROXY_TOKEN}'}
             )
-            proxies = res.json().get('proxies', [])
-            if proxies:
-                proxy = proxies[0]
-                return f"http://{proxy['username']}:{proxy['password']}@{proxy['hostIp']}:{proxy['portHttp']}"
-            else:
-                return DEFAULT_PROXY
-        except Exception as e:
-            # Log lỗi nếu cần: print(f"Proxy fetch error: {e}")
+        proxies = res.json().get('proxies', [])
+        if proxies:
+            proxy = proxies[0]
+            return f"http://{proxy['username']}:{proxy['password']}@{proxy['hostIp']}:{proxy['portHttp']}"
+        else:
             return DEFAULT_PROXY
+
+    except Exception as e:
+        # Log lỗi nếu cần: print(f"Proxy fetch error: {e}")
+        print(f"Unexpected error: {e}")
+        return DEFAULT_PROXY
 
 def upload_to_wasabi(filepath, filename):
     # Dummy - replace with boto3 or real upload
