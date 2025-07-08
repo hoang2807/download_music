@@ -39,7 +39,7 @@ def get_proxy_from_zingproxy():
         res = requests.get(
                 'https://api.zingproxy.com/proxy/dan-cu-viet-nam/running',
                 headers={'Authorization': f'Bearer {ZING_PROXY_TOKEN}'}
-            )
+        )
         proxies = res.json().get('proxies', [])
         if proxies:
             proxy = proxies[0]
