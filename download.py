@@ -366,6 +366,10 @@ def dashboard():
 # --- ROUTE ---
 @app.route('/api/download', methods=['POST'])
 def download():
+    WASABI_ACCESS_KEY = os.getenv("WASABI_ACCESS_KEY")
+    WASABI_SECRET_KEY = os.getenv("WASABI_SECRET_KEY")
+    WASABI_BUCKET = os.getenv("WASABI_BUCKET")
+    WASABI_REGION = "ap-southeast-1"
     url = request.json.get('url')
     name = request.json.get('name')
     artists = request.json.get('artists')
@@ -385,6 +389,7 @@ def download():
 
     keyword = f"{name} {artists}"
     download_id = id
+    temp_url = ''
 
     with Session() as session:
         downloadMusic = session.query(Download).filter_by(download_id=download_id).first()
@@ -395,11 +400,30 @@ def download():
             session.commit()
             q.enqueue(download_audio_job, download_id, keyword, url)
 
+        if downloadMusic.file_name:
+            s3 = boto3.client(
+                's3',
+                region_name=WASABI_REGION,  # Thay theo vùng Wasabi của bạn
+                endpoint_url=f'https://s3.{WASABI_REGION}.wasabisys.com',  # URL Wasabi
+                aws_access_key_id=WASABI_ACCESS_KEY,
+                aws_secret_access_key=WASABI_SECRET_KEY,
+                config=Config(signature_version='s3v4')
+            )
+
+            temp_url = s3.generate_presigned_url(
+                'get_object',
+                Params={
+                    'Bucket': WASABI_BUCKET,
+                    'Key': downloadMusic.file_name
+                },
+                ExpiresIn=3600  # 60 phút
+            )
+
         if downloadMusic.status == 'completed':
             return jsonify({
                 'status': 'completed',
                 'download_id': download_id,
-                'file': downloadMusic.file_path
+                'file': temp_url
             })
         elif downloadMusic.status == 'failed':
             return jsonify({
