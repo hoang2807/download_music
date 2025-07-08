@@ -1,7 +1,10 @@
 import os
 import re
 import sys
+
+import boto3
 import requests
+from botocore.config import Config
 from flask import Flask, request, jsonify
 from redis import Redis
 from rq import Queue, Worker
