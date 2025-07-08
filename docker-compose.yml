@@ -109,12 +109,23 @@ services:
       PMA_PORT: 3306
       MYSQL_ROOT_PASSWORD: rootpassword
     ports:
-      - '8080:80'  # Truy cập phpMyAdmin qua cổng 8080
+      - '8080:80' # Truy cập phpMyAdmin qua cổng 8080
     networks:
       - yt_network
     depends_on:
       - mysql
-
+  # Certbot for SSL certificates
+  certbot:
+    image: certbot/certbot
+    container_name: yt_downloader_certbot
+    volumes:
+      - ./certbot/conf:/etc/letsencrypt
+      - ./certbot/www:/var/www/certbot
+    command: certonly --webroot --webroot-path=/var/www/certbot --email hungnm.dev94@gmail.com --agree-tos --no-eff-email -d scraper.merrychill.com
+    depends_on:
+      - nginx
+    networks:
+      - yt_network
 volumes:
   mysql_data:
   redis_data:
