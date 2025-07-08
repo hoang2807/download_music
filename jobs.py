@@ -42,8 +42,9 @@ def get_proxy_from_zingproxy():
         )
         proxies = res.json().get('proxies', [])
         if proxies:
-            proxy = proxies[0]
-            return f"http://{proxy['username']}:{proxy['password']}@{proxy['hostIp']}:{proxy['portHttp']}"
+            #proxy = proxies[0]
+            #return f"http://{proxy['username']}:{proxy['password']}@{proxy['hostIp']}:{proxy['portHttp']}"
+            return DEFAULT_PROXY
         else:
             return DEFAULT_PROXY
 
