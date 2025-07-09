@@ -133,7 +133,7 @@ def download_audio_job(download_id, search_keyword, url):
     proxy = get_proxy_from_zingproxy()
     os.makedirs(TEMP_DIR, exist_ok=True)
     expected_file = None
-
+    API_ENDPOINT = os.getenv("API_ENDPOINT")
     try:
 
         video_url = url
@@ -169,6 +169,22 @@ def download_audio_job(download_id, search_keyword, url):
 
         if not expected_file or not os.path.exists(expected_file):
             raise Exception("Không tìm thấy file sau khi tải.")
+
+        file_name = f"{slug}_{download_id}.mp3"
+        # Tạo URL cục bộ tạm thời trước khi upload
+
+        local_url = f"{API_ENDPOINT}{os.path.basename(expected_file)}"
+        public_url = local_url
+
+        # Cập nhật thông tin vào DB trước khi upload Wasabi
+        with Session() as session:
+            download = session.query(Download).filter_by(download_id=download_id).first()
+            if download:
+                download.status = 'processing'  # hoặc 'local-ready' nếu muốn
+                download.file_name = file_name
+                download.file_path = public_url
+                download.updated_at = datetime.utcnow()
+                session.commit()
 
         # if not os.path.exists(expected_file):
         #     raise Exception("File not found after download")
