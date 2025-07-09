@@ -154,10 +154,9 @@ def download_audio_job(download_id, search_keyword, url):
             '--downloader', 'aria2c',
             '--downloader-args', 'aria2c:"-x 16 -s 16 -k 1M"',
             '--no-playlist',
-            '--extract-audio',
-            '--audio-format', 'mp3',
-            '--audio-quality', '0',
+            '--quiet',
             '--no-warnings',
+            '-f', 'bestaudio[ext=webm]/bestaudio/best',
             '-o', output_path,
             video_url
         ]
