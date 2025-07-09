@@ -398,6 +398,7 @@ def download():
         downloadMusic = session.query(Download).filter_by(download_id=download_id).first()
 
         if not downloadMusic:
+            print(f"[⏱️] Bắt đầu xử lý download_id: {download_id} lúc {datetime.utcnow()}")
             downloadMusic = Download(download_id=download_id, url=url, status='pending')
             session.add(downloadMusic)
             session.commit()
@@ -423,6 +424,8 @@ def download():
             )
 
         if downloadMusic.status == 'completed':
+            duration = time.time() - start_time
+            print(f"[✅] Đã hoàn tất download_id: {download_id} sau {duration:.2f} giây")
             return jsonify({
                 'status': 'completed',
                 'download_id': download_id,
