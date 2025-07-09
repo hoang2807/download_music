@@ -11,6 +11,7 @@ from sqlalchemy import create_engine, Column, String, DateTime
 from sqlalchemy.orm import sessionmaker, declarative_base
 import boto3
 from botocore.exceptions import NoCredentialsError, ClientError
+import time
 
 # --- SQLALCHEMY SETUP ---
 DATABASE_URL = os.getenv("DATABASE_URL")
@@ -175,7 +176,14 @@ def download_audio_job(download_id, search_keyword, url):
 
         # if not os.path.exists(expected_file):
         #     raise Exception("File not found after download")
+
+        start_upload = time.time()
+        print(f"[⏫] Bắt đầu upload {file_name} lên Wasabi...")
+
         public_url = upload_to_wasabi(expected_file, file_name)
+
+        upload_duration = time.time() - start_upload
+        print(f"[✅] Upload hoàn tất sau {upload_duration:.2f} giây. Public URL: {public_url}")
 
         with Session() as session:
             download = session.query(Download).filter_by(download_id=download_id).first()
