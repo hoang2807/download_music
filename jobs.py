@@ -147,6 +147,8 @@ def download_audio_job(download_id, search_keyword, url):
             '--proxy', proxy,
             '--no-check-certificate',
             '--no-continue',
+            '--no-call-home',
+            '--extractor-args', 'youtube:player_client=web',
             '--socket-timeout', '60',
             '--retries', '2',
             '--fragment-retries', '3',
