@@ -10,7 +10,7 @@ from redis import Redis
 from rq import Queue, Worker
 from rq.job import Job
 from rq.registry import FailedJobRegistry, FinishedJobRegistry, StartedJobRegistry
-from datetime import datetime
+
 from jobs import Session, Download, download_audio_job
 
 # --- CONFIG ---
@@ -398,7 +398,6 @@ def download():
         downloadMusic = session.query(Download).filter_by(download_id=download_id).first()
 
         if not downloadMusic:
-            print(f"[⏱️] Bắt đầu xử lý download_id: {download_id} lúc {datetime.utcnow()}")
             downloadMusic = Download(download_id=download_id, url=url, status='pending')
             session.add(downloadMusic)
             session.commit()
@@ -424,8 +423,6 @@ def download():
             )
 
         if downloadMusic.status == 'completed':
-            duration = time.time() - start_time
-            print(f"[✅] Đã hoàn tất download_id: {download_id} sau {duration:.2f} giây")
             return jsonify({
                 'status': 'completed',
                 'download_id': download_id,
