@@ -146,7 +146,6 @@ def download_audio_job(download_id, search_keyword, url):
             '--proxy', proxy,
             '--no-check-certificate',
             '--no-continue',
-            '--no-call-home',
             '--socket-timeout', '60',
             '--retries', '3',
             '--fragment-retries', '3',
@@ -156,12 +155,10 @@ def download_audio_job(download_id, search_keyword, url):
             '--no-playlist',
             '--quiet',
             '--no-warnings',
-            '--extractor-args', 'youtube:player_client=web',
-            '-f', 'bestaudio[abr<=128][ext=webm]/bestaudio[ext=webm]/bestaudio/best',
+            '-f', 'bestaudio[ext=webm]/bestaudio/best',
             '-o', output_path,
             video_url
         ]
-
         subprocess.run(download_cmd, capture_output=True, text=True, check=True, timeout=600)
 
         matching_files = glob.glob(os.path.join(TEMP_DIR, f'{slug}.*'))
@@ -176,23 +173,8 @@ def download_audio_job(download_id, search_keyword, url):
         file_name = f"{slug}_{download_id}.mp3"
         # Tạo URL cục bộ tạm thời trước khi upload
 
-        local_url = f"{API_ENDPOINT}{os.path.basename(expected_file)}"
-        public_url = local_url
-
-        # Cập nhật thông tin vào DB trước khi upload Wasabi
-        with Session() as session:
-            download = session.query(Download).filter_by(download_id=download_id).first()
-            if download:
-                download.status = 'processing'  # hoặc 'local-ready' nếu muốn
-                download.file_name = file_name
-                download.file_path = public_url
-                download.updated_at = datetime.utcnow()
-                session.commit()
-
         # if not os.path.exists(expected_file):
         #     raise Exception("File not found after download")
-
-        file_name = f"{slug}_{download_id}.mp3"
         public_url = upload_to_wasabi(expected_file, file_name)
 
         with Session() as session:
