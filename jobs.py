@@ -148,7 +148,7 @@ def download_audio_job(download_id, search_keyword, url):
             '--no-check-certificate',
             '--no-continue',
             '--socket-timeout', '60',
-            '--retries', '2',
+            '--retries', '3',
             '--fragment-retries', '3',
             '--concurrent-fragments', '8',
             '--downloader', 'aria2c',
@@ -177,13 +177,7 @@ def download_audio_job(download_id, search_keyword, url):
         # if not os.path.exists(expected_file):
         #     raise Exception("File not found after download")
 
-        start_upload = time.time()
-        print(f"[⏫] Bắt đầu upload {file_name} lên Wasabi...")
-
         public_url = upload_to_wasabi(expected_file, file_name)
-
-        upload_duration = time.time() - start_upload
-        print(f"[✅] Upload hoàn tất sau {upload_duration:.2f} giây. Public URL: {public_url}")
 
         with Session() as session:
             download = session.query(Download).filter_by(download_id=download_id).first()
