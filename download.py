@@ -10,7 +10,7 @@ from redis import Redis
 from rq import Queue, Worker
 from rq.job import Job
 from rq.registry import FailedJobRegistry, FinishedJobRegistry, StartedJobRegistry
-
+from datetime import datetime
 from jobs import Session, Download, download_audio_job
 
 # --- CONFIG ---
