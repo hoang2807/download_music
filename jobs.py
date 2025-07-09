@@ -146,6 +146,7 @@ def download_audio_job(download_id, search_keyword, url):
             '--proxy', proxy,
             '--no-check-certificate',
             '--no-continue',
+            '--no-call-home',
             '--socket-timeout', '60',
             '--retries', '3',
             '--fragment-retries', '3',
@@ -155,10 +156,12 @@ def download_audio_job(download_id, search_keyword, url):
             '--no-playlist',
             '--quiet',
             '--no-warnings',
-            '-f', 'bestaudio[ext=webm]/bestaudio/best',
+            '--extractor-args', 'youtube:player_client=web',
+            '-f', 'bestaudio[abr<=128][ext=webm]/bestaudio[ext=webm]/bestaudio/best',
             '-o', output_path,
             video_url
         ]
+
         subprocess.run(download_cmd, capture_output=True, text=True, check=True, timeout=600)
 
         matching_files = glob.glob(os.path.join(TEMP_DIR, f'{slug}.*'))
