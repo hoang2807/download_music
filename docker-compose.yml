@@ -1,6 +1,5 @@
-version: '3.8'
-
 services:
+  # MySQL Database
   mysql:
     image: mysql:8.0
     container_name: yt_downloader_mysql
@@ -21,6 +20,7 @@ services:
       timeout: 20s
       retries: 10
 
+  # Redis
   redis:
     image: redis:7-alpine
     container_name: yt_downloader_redis
@@ -35,11 +35,12 @@ services:
       timeout: 10s
       retries: 5
 
+  # Flask Web Application
   web:
     build: .
     container_name: yt_downloader_web
-    expose:
-      - "5000"
+    ports:
+      - '5000:5000'
     environment:
       - DATABASE_URL=mysql+pymysql://ytuser:ytpassword@mysql:3306/yt_downloader
       - REDIS_URL=redis://redis:6379/0
@@ -61,6 +62,7 @@ services:
       - yt_network
     restart: unless-stopped
 
+  # RQ Worker for background jobs
   worker:
     build: .
     container_name: yt_downloader_worker
@@ -85,23 +87,36 @@ services:
     networks:
       - yt_network
     restart: unless-stopped
-
   nginx:
-    image: nginx:latest
-    container_name: yt_downloader_nginx
+    image: nginx
     ports:
-      - "80:80"
-      - "443:443"
+      - '80:80'
+      - '443:443'
     volumes:
       - ./docker/nginx.conf:/etc/nginx/conf.d/default.conf
-      - ./certbot/www:/var/www/certbot
+      #      - ./certbot:/etc/letsencrypt
       - ./certbot/conf:/etc/letsencrypt
+      - ./certbot/www:/var/www/certbot
     depends_on:
       - web
+    #      - certbot
     networks:
       - yt_network
-    restart: always
-
+  # phpMyAdmin for managing MySQL
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    container_name: yt_downloader_phpmyadmin
+    environment:
+      PMA_HOST: mysql
+      PMA_PORT: 3306
+      MYSQL_ROOT_PASSWORD: rootpassword
+    ports:
+      - '8080:80' # Truy cập phpMyAdmin qua cổng 8080
+    networks:
+      - yt_network
+    depends_on:
+      - mysql
+  # Certbot for SSL certificates
   certbot:
     image: certbot/certbot
     container_name: yt_downloader_certbot
@@ -113,21 +128,6 @@ services:
       - nginx
     networks:
       - yt_network
-
-  phpmyadmin:
-    image: phpmyadmin/phpmyadmin
-    container_name: yt_downloader_phpmyadmin
-    environment:
-      PMA_HOST: mysql
-      PMA_PORT: 3306
-      MYSQL_ROOT_PASSWORD: rootpassword
-    ports:
-      - '8080:80'
-    networks:
-      - yt_network
-    depends_on:
-      - mysql
-
 volumes:
   mysql_data:
   redis_data:
