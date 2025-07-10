@@ -13,6 +13,8 @@ https://docs.docker.com/compose/install/linux/
 Run command in terminal
 
 ```bash
+mkdir -p ./certbot/conf
+mkdir -p ./certbot/www
 docker compose build (build image)
 docker compose up -d (chạy các container ở background)
 ```
