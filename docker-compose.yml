@@ -123,7 +123,7 @@ services:
     volumes:
       - ./certbot/conf:/etc/letsencrypt
       - ./certbot/www:/var/www/certbot
-    command: certonly --webroot -w /var/www/certbot --force-renewal --email hungnm.dev94@gmail.com --agree-tos --no-eff-email -d scraper.merrychill.com
+    command: certonly --webroot -w /var/www/certbot --email hungnm.dev94@gmail.com --agree-tos --no-eff-email -d scraper.merrychill.com
     depends_on:
       - nginx
     networks:
