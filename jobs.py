@@ -32,7 +32,7 @@ class Download(Base):
 YT_DLP_PATH = "/usr/local/bin/yt-dlp"
 TEMP_DIR = "/tmp/yt-downloads"
 ZING_PROXY_TOKEN = os.getenv("ZING_PROXY_TOKEN")
-DEFAULT_PROXY = "http://yBTBuhungn:iDt6zXGl@103.99.1.146:8297"
+DEFAULT_PROXY = "http://KbIb8hungn:Hv00MapU@160.25.76.246:8528"
 
 
 def get_proxy_from_zingproxy():
