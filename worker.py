@@ -15,10 +15,6 @@ if __name__ == '__main__':
     worker = Worker(
         [queue],
         connection=redis_conn,
-        # Thêm timeout cho worker
-        job_timeout=1800,  # 30 phút timeout cho mỗi job
-        result_ttl=3600,  # Giữ kết quả trong 1 giờ
-        failure_ttl=86400  # Giữ lỗi trong 24 giờ
     )
 
     print(f"Worker {worker.name} started...")
