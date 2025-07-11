@@ -198,3 +198,8 @@ def download_audio_job(download_id, search_keyword, url):
     finally:
         if expected_file and os.path.exists(expected_file):
             os.remove(expected_file)
+        if os.path.exists(TEMP_DIR):
+            try:
+                os.rmdir(TEMP_DIR)
+            except OSError:
+                pass  # Thư mục không rỗng, bỏ qua

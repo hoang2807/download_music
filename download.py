@@ -1,6 +1,5 @@
 import os
 import re
-import sys
 
 import boto3
 import requests
@@ -12,6 +11,7 @@ from rq.job import Job
 from rq.registry import FailedJobRegistry, FinishedJobRegistry, StartedJobRegistry
 
 from jobs import Session, Download, download_audio_job
+from worker import redis_conn
 
 # --- CONFIG ---
 YT_DLP_PATH = "/usr/local/bin/yt-dlp"
@@ -23,9 +23,12 @@ DATABASE_URL = os.getenv("DATABASE_URL")
 # --- FLASK APP ---
 app = Flask(__name__)
 # q = Queue(connection=Redis())
-redis_url = os.getenv("REDIS_URL", "redis://localhost:6379")
-redis_conn = Redis.from_url(redis_url)
-q = Queue(connection=redis_conn)
+q = Queue(
+    connection=redis_conn,
+    default_timeout=1800,  # 30 phút timeout
+    result_ttl=3600,       # Giữ kết quả trong 1 giờ
+    failure_ttl=86400      # Giữ lỗi trong 24 giờ
+)
 
 # --- UTILS ---
 def get_spotify_track_info(spotify_url):
