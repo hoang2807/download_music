@@ -1,0 +1,117 @@
+#!/bin/bash
+
+# SSL Setup Script for Docker Compose
+
+echo "Setting up SSL certificates with Let's Encrypt..."
+
+# Create directories
+mkdir -p ./certbot/conf
+mkdir -p ./certbot/www
+mkdir -p ./docker
+
+# Replace email and domain in docker-compose.yml
+read -p "Enter your email: " EMAIL
+read -p "Enter your domain (default: scraper.merrychill.com): " DOMAIN
+DOMAIN=${DOMAIN:-scraper.merrychill.com}
+
+echo "Using email: $EMAIL"
+echo "Using domain: $DOMAIN"
+
+# Update docker-compose.yml with your email
+sed -i "s/your-email@example.com/$EMAIL/g" docker-compose.yml
+sed -i "s/scraper.merrychill.com/$DOMAIN/g" docker-compose.yml
+
+# Create initial nginx config for certificate generation
+cat > ./docker/nginx.conf << EOF
+server {
+    listen 80;
+    server_name $DOMAIN;
+    
+    location /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+    }
+    
+    location / {
+        proxy_pass http://web:5000;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_read_timeout 300;
+    }
+}
+EOF
+
+echo "Starting services..."
+docker-compose up -d nginx
+
+echo "Waiting for nginx to start..."
+sleep 10
+
+echo "Obtaining SSL certificate..."
+docker-compose run --rm certbot certonly --webroot --webroot-path=/var/www/certbot --email $EMAIL --agree-tos --no-eff-email -d $DOMAIN
+
+if [ $? -eq 0 ]; then
+    echo "Certificate obtained successfully!"
+    
+    # Update nginx config with SSL
+    cat > ./docker/nginx.conf << EOF
+# HTTP redirect to HTTPS
+server {
+    listen 80;
+    server_name $DOMAIN;
+    
+    # Acme challenge for Let's Encrypt
+    location /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+    }
+    
+    # Redirect all HTTP requests to HTTPS
+    location / {
+        return 301 https://\$server_name\$request_uri;
+    }
+}
+
+# HTTPS server
+server {
+    listen 443 ssl http2;
+    server_name $DOMAIN;
+
+    # SSL Configuration
+    ssl_certificate /etc/letsencrypt/live/$DOMAIN/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/$DOMAIN/privkey.pem;
+    
+    # SSL Settings
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers ECDHE-RSA-AES128-GCM-SHA256:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-RSA-AES128-SHA256:ECDHE-RSA-AES256-SHA384;
+    ssl_prefer_server_ciphers off;
+    ssl_session_cache shared:SSL:10m;
+    ssl_session_timeout 10m;
+    
+    # Security headers
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-XSS-Protection "1; mode=block" always;
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+
+    # Proxy configuration
+    location / {
+        proxy_pass http://web:5000;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+        proxy_read_timeout 300;
+        proxy_connect_timeout 300;
+        proxy_send_timeout 300;
+    }
+}
+EOF
+
+    echo "Reloading nginx with SSL configuration..."
+    docker-compose exec nginx nginx -s reload
+    
+    echo "SSL setup completed successfully!"
+    echo "Your site should now be accessible at https://$DOMAIN"
+    
+else
+    echo "Failed to obtain certificate. Please check your domain configuration."
+fi
