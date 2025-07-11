@@ -34,6 +34,7 @@ services:
       test: ['CMD', 'redis-cli', 'ping']
       timeout: 10s
       retries: 5
+    restart: unless-stopped
 
   # Flask Web Application
   web:
@@ -66,6 +67,222 @@ services:
   worker:
     build: .
     container_name: yt_downloader_worker
+    command: python worker.py
+    environment:
+      - DATABASE_URL=mysql+pymysql://ytuser:ytpassword@mysql:3306/yt_downloader
+      - REDIS_URL=redis://redis:6379/0
+      - ZING_PROXY_TOKEN=${ZING_PROXY_TOKEN}
+      - SPOTIFY_CLIENT_ID=${SPOTIFY_CLIENT_ID}
+      - SPOTIFY_CLIENT_SECRET=${SPOTIFY_CLIENT_SECRET}
+      - WASABI_ACCESS_KEY=${WASABI_ACCESS_KEY}
+      - WASABI_SECRET_KEY=${WASABI_SECRET_KEY}
+      - WASABI_BUCKET=${WASABI_BUCKET}
+    volumes:
+      - ./downloads:/tmp/yt-downloads
+      - ./logs:/app/logs
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - yt_network
+    restart: unless-stopped
+  worker2:
+    build: .
+    container_name: yt_downloader_worker2
+    command: python worker.py
+    environment:
+      - DATABASE_URL=mysql+pymysql://ytuser:ytpassword@mysql:3306/yt_downloader
+      - REDIS_URL=redis://redis:6379/0
+      - ZING_PROXY_TOKEN=${ZING_PROXY_TOKEN}
+      - SPOTIFY_CLIENT_ID=${SPOTIFY_CLIENT_ID}
+      - SPOTIFY_CLIENT_SECRET=${SPOTIFY_CLIENT_SECRET}
+      - WASABI_ACCESS_KEY=${WASABI_ACCESS_KEY}
+      - WASABI_SECRET_KEY=${WASABI_SECRET_KEY}
+      - WASABI_BUCKET=${WASABI_BUCKET}
+    volumes:
+      - ./downloads:/tmp/yt-downloads
+      - ./logs:/app/logs
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - yt_network
+    restart: unless-stopped
+  worker3:
+    build: .
+    container_name: yt_downloader_worker3
+    command: python worker.py
+    environment:
+      - DATABASE_URL=mysql+pymysql://ytuser:ytpassword@mysql:3306/yt_downloader
+      - REDIS_URL=redis://redis:6379/0
+      - ZING_PROXY_TOKEN=${ZING_PROXY_TOKEN}
+      - SPOTIFY_CLIENT_ID=${SPOTIFY_CLIENT_ID}
+      - SPOTIFY_CLIENT_SECRET=${SPOTIFY_CLIENT_SECRET}
+      - WASABI_ACCESS_KEY=${WASABI_ACCESS_KEY}
+      - WASABI_SECRET_KEY=${WASABI_SECRET_KEY}
+      - WASABI_BUCKET=${WASABI_BUCKET}
+    volumes:
+      - ./downloads:/tmp/yt-downloads
+      - ./logs:/app/logs
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - yt_network
+    restart: unless-stopped
+  worker4:
+    build: .
+    container_name: yt_downloader_worker4
+    command: python worker.py
+    environment:
+      - DATABASE_URL=mysql+pymysql://ytuser:ytpassword@mysql:3306/yt_downloader
+      - REDIS_URL=redis://redis:6379/0
+      - ZING_PROXY_TOKEN=${ZING_PROXY_TOKEN}
+      - SPOTIFY_CLIENT_ID=${SPOTIFY_CLIENT_ID}
+      - SPOTIFY_CLIENT_SECRET=${SPOTIFY_CLIENT_SECRET}
+      - WASABI_ACCESS_KEY=${WASABI_ACCESS_KEY}
+      - WASABI_SECRET_KEY=${WASABI_SECRET_KEY}
+      - WASABI_BUCKET=${WASABI_BUCKET}
+    volumes:
+      - ./downloads:/tmp/yt-downloads
+      - ./logs:/app/logs
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - yt_network
+    restart: unless-stopped
+  worker5:
+    build: .
+    container_name: yt_downloader_worker5
+    command: python worker.py
+    environment:
+      - DATABASE_URL=mysql+pymysql://ytuser:ytpassword@mysql:3306/yt_downloader
+      - REDIS_URL=redis://redis:6379/0
+      - ZING_PROXY_TOKEN=${ZING_PROXY_TOKEN}
+      - SPOTIFY_CLIENT_ID=${SPOTIFY_CLIENT_ID}
+      - SPOTIFY_CLIENT_SECRET=${SPOTIFY_CLIENT_SECRET}
+      - WASABI_ACCESS_KEY=${WASABI_ACCESS_KEY}
+      - WASABI_SECRET_KEY=${WASABI_SECRET_KEY}
+      - WASABI_BUCKET=${WASABI_BUCKET}
+    volumes:
+      - ./downloads:/tmp/yt-downloads
+      - ./logs:/app/logs
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - yt_network
+    restart: unless-stopped
+  worker6:
+    build: .
+    container_name: yt_downloader_worker6
+    command: python worker.py
+    environment:
+      - DATABASE_URL=mysql+pymysql://ytuser:ytpassword@mysql:3306/yt_downloader
+      - REDIS_URL=redis://redis:6379/0
+      - ZING_PROXY_TOKEN=${ZING_PROXY_TOKEN}
+      - SPOTIFY_CLIENT_ID=${SPOTIFY_CLIENT_ID}
+      - SPOTIFY_CLIENT_SECRET=${SPOTIFY_CLIENT_SECRET}
+      - WASABI_ACCESS_KEY=${WASABI_ACCESS_KEY}
+      - WASABI_SECRET_KEY=${WASABI_SECRET_KEY}
+      - WASABI_BUCKET=${WASABI_BUCKET}
+    volumes:
+      - ./downloads:/tmp/yt-downloads
+      - ./logs:/app/logs
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - yt_network
+    restart: unless-stopped
+  worker7:
+    build: .
+    container_name: yt_downloader_worker7
+    command: python worker.py
+    environment:
+      - DATABASE_URL=mysql+pymysql://ytuser:ytpassword@mysql:3306/yt_downloader
+      - REDIS_URL=redis://redis:6379/0
+      - ZING_PROXY_TOKEN=${ZING_PROXY_TOKEN}
+      - SPOTIFY_CLIENT_ID=${SPOTIFY_CLIENT_ID}
+      - SPOTIFY_CLIENT_SECRET=${SPOTIFY_CLIENT_SECRET}
+      - WASABI_ACCESS_KEY=${WASABI_ACCESS_KEY}
+      - WASABI_SECRET_KEY=${WASABI_SECRET_KEY}
+      - WASABI_BUCKET=${WASABI_BUCKET}
+    volumes:
+      - ./downloads:/tmp/yt-downloads
+      - ./logs:/app/logs
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - yt_network
+    restart: unless-stopped
+  worker8:
+    build: .
+    container_name: yt_downloader_worker8
+    command: python worker.py
+    environment:
+      - DATABASE_URL=mysql+pymysql://ytuser:ytpassword@mysql:3306/yt_downloader
+      - REDIS_URL=redis://redis:6379/0
+      - ZING_PROXY_TOKEN=${ZING_PROXY_TOKEN}
+      - SPOTIFY_CLIENT_ID=${SPOTIFY_CLIENT_ID}
+      - SPOTIFY_CLIENT_SECRET=${SPOTIFY_CLIENT_SECRET}
+      - WASABI_ACCESS_KEY=${WASABI_ACCESS_KEY}
+      - WASABI_SECRET_KEY=${WASABI_SECRET_KEY}
+      - WASABI_BUCKET=${WASABI_BUCKET}
+    volumes:
+      - ./downloads:/tmp/yt-downloads
+      - ./logs:/app/logs
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - yt_network
+    restart: unless-stopped
+  worker9:
+    build: .
+    container_name: yt_downloader_worker9
+    command: python worker.py
+    environment:
+      - DATABASE_URL=mysql+pymysql://ytuser:ytpassword@mysql:3306/yt_downloader
+      - REDIS_URL=redis://redis:6379/0
+      - ZING_PROXY_TOKEN=${ZING_PROXY_TOKEN}
+      - SPOTIFY_CLIENT_ID=${SPOTIFY_CLIENT_ID}
+      - SPOTIFY_CLIENT_SECRET=${SPOTIFY_CLIENT_SECRET}
+      - WASABI_ACCESS_KEY=${WASABI_ACCESS_KEY}
+      - WASABI_SECRET_KEY=${WASABI_SECRET_KEY}
+      - WASABI_BUCKET=${WASABI_BUCKET}
+    volumes:
+      - ./downloads:/tmp/yt-downloads
+      - ./logs:/app/logs
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - yt_network
+    restart: unless-stopped
+  worker10:
+    build: .
+    container_name: yt_downloader_worker10
     command: python worker.py
     environment:
       - DATABASE_URL=mysql+pymysql://ytuser:ytpassword@mysql:3306/yt_downloader
