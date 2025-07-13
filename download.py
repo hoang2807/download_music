@@ -49,11 +49,14 @@ def get_spotify_track_info(spotify_url):
 # --- QUEUE MONITORING FUNCTIONS ---
 def get_queue_stats():
     """Lấy thống kê tổng quan về queue"""
+    workers = Worker.all(connection=redis_conn)
+    active_workers = [worker for worker in workers if worker.get_state() == 'busy']
+
     stats = {
         'total_jobs': len(q),
         'pending_jobs': len(q),
-        'workers': len(Worker.all(connection=redis_conn)),
-        'active_workers': len(Worker.all(connection=redis_conn, state='busy')),
+        'workers': len(workers),
+        'active_workers': len(active_workers),
         'failed_jobs': len(FailedJobRegistry(connection=redis_conn)),
         'finished_jobs': len(FinishedJobRegistry(connection=redis_conn)),
         'started_jobs': len(StartedJobRegistry(connection=redis_conn))
