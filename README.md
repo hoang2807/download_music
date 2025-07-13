@@ -19,6 +19,16 @@ COMPOSE_BAKE=true docker compose build (build image)
 docker compose up -d --scale worker=8  (chạy các container ở background và worker là 10)
 ```
 
+Build project again if update code
+
+```bash
+mkdir -p ./certbot/conf
+mkdir -p ./certbot/www
+COMPOSE_BAKE=true docker compose build (build image)
+docker compose down
+docker compose up -d --scale worker=8  (chạy các container ở background và worker là 10)
+```
+
 phpMyAdmin: localhost:8080
 username: ytuser
 password: ytpassword
