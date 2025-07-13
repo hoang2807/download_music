@@ -67,7 +67,6 @@ services:
   # RQ Worker for background jobs
   worker:
     build: .
-#    container_name: yt_downloader_worker
     command: python worker.py
     environment:
       - DATABASE_URL=mysql+pymysql://ytuser:ytpassword@mysql:3306/yt_downloader
