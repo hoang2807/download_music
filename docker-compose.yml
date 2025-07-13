@@ -19,6 +19,7 @@ services:
       test: ['CMD', 'mysqladmin', 'ping', '-h', 'localhost']
       timeout: 20s
       retries: 10
+    restart: unless-stopped
 
   # Redis
   redis:
@@ -66,7 +67,7 @@ services:
   # RQ Worker for background jobs
   worker:
     build: .
-    container_name: yt_downloader_worker
+#    container_name: yt_downloader_worker
     command: python worker.py
     environment:
       - DATABASE_URL=mysql+pymysql://ytuser:ytpassword@mysql:3306/yt_downloader
@@ -88,6 +89,8 @@ services:
     networks:
       - yt_network
     restart: unless-stopped
+
+  # nginx for reverse proxy
   nginx:
     image: nginx
     ports:
@@ -95,14 +98,13 @@ services:
       - '443:443'
     volumes:
       - ./docker/nginx.conf:/etc/nginx/conf.d/default.conf
-      #      - ./certbot:/etc/letsencrypt
       - ./certbot/conf:/etc/letsencrypt
       - ./certbot/www:/var/www/certbot
     depends_on:
       - web
-    #      - certbot
     networks:
       - yt_network
+
   # phpMyAdmin for managing MySQL
   phpmyadmin:
     image: phpmyadmin/phpmyadmin
@@ -112,11 +114,12 @@ services:
       PMA_PORT: 3306
       MYSQL_ROOT_PASSWORD: rootpassword
     ports:
-      - '8080:80' # Truy cập phpMyAdmin qua cổng 8080
+      - '8080:80'
     networks:
       - yt_network
     depends_on:
       - mysql
+
   # Certbot for SSL certificates
   certbot:
     image: certbot/certbot
@@ -129,6 +132,7 @@ services:
       - nginx
     networks:
       - yt_network
+
 volumes:
   mysql_data:
   redis_data:

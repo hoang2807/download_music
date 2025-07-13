@@ -16,7 +16,7 @@ Run command in terminal
 mkdir -p ./certbot/conf
 mkdir -p ./certbot/www
 docker compose build (build image)
-docker compose up -d (chạy các container ở background)
+docker compose up -d --scale worker=4  (chạy các container ở background và worker là 4)
 ```
 
 phpMyAdmin: localhost:8080
