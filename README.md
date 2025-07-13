@@ -16,7 +16,7 @@ Run command in terminal
 mkdir -p ./certbot/conf
 mkdir -p ./certbot/www
 COMPOSE_BAKE=true docker compose build (build image)
-docker compose up -d --scale worker=10  (chạy các container ở background và worker là 10)
+docker compose up -d --scale worker=8  (chạy các container ở background và worker là 10)
 ```
 
 phpMyAdmin: localhost:8080
