@@ -16,7 +16,7 @@ Run command in terminal
 mkdir -p ./certbot/conf
 mkdir -p ./certbot/www
 COMPOSE_BAKE=true docker compose build (build image)
-docker compose up -d --scale worker=6  (chạy các container ở background và worker là 6)
+docker compose up -d --scale worker=6 (chạy các container ở background và worker là 6)
 ```
 
 Build project again if update code
