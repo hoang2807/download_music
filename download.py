@@ -10,7 +10,7 @@ from rq import Queue, Worker
 from rq.job import Job
 from rq.registry import FailedJobRegistry, FinishedJobRegistry, StartedJobRegistry
 
-from jobs import Session, Download, download_audio_job
+from jobs import Session, Download, download_audio_job, WASABI_REGION, WASABI_SECRET_KEY, WASABI_ACCESS_KEY, WASABI_BUCKET
 from worker import redis_conn
 
 # --- CONFIG ---
@@ -18,7 +18,6 @@ YT_DLP_PATH = "/usr/local/bin/yt-dlp"
 TEMP_DIR = "/tmp/yt-downloads"
 ZING_PROXY_TOKEN = os.getenv("ZING_PROXY_TOKEN")
 DATABASE_URL = os.getenv("DATABASE_URL")
-
 
 # --- FLASK APP ---
 app = Flask(__name__)
@@ -375,28 +374,27 @@ def dashboard():
 # --- ROUTE ---
 @app.route('/api/download', methods=['POST'])
 def download():
-    WASABI_ACCESS_KEY = os.getenv("WASABI_ACCESS_KEY")
-    WASABI_SECRET_KEY = os.getenv("WASABI_SECRET_KEY")
-    WASABI_BUCKET = os.getenv("WASABI_BUCKET")
-    WASABI_REGION = "ap-southeast-1"
     url = request.json.get('url')
-    name = request.json.get('name')
-    artists = request.json.get('artists')
+    # name = request.json.get('name')
+    # artists = request.json.get('artists')
     id = request.json.get('id')
     if not url:
         return jsonify({'error': 'Missing URL'}), 400
-
-    if not name:
-        return jsonify({'error': 'Missing name'}), 400
-
-    if not artists:
-        return jsonify({'error': 'Missing artists'}), 400
-
+    #
+    # if not name:
+    #     return jsonify({'error': 'Missing name'}), 400
+    #
+    # if not artists:
+    #     return jsonify({'error': 'Missing artists'}), 400
+    #
     if not id:
         return jsonify({'error': 'Missing id'}), 400
+    track_info = get_spotify_track_info(url)
+    if not track_info:
+        return jsonify({'error': 'Invalid Spotify URL'}), 400
 
 
-    keyword = f"{name} {artists}"
+    keyword = f"{track_info['name']} {track_info['artists'][0]['name']}"
     download_id = id
     temp_url = ''
 

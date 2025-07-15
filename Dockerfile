@@ -37,4 +37,4 @@ EXPOSE 5000
 
 # Default command
 #CMD ["python", "download.py"]
-CMD ["gunicorn", "-w", "8", "-k", "gevent", "-b", "0.0.0.0:5000", "download:app"]
+CMD ["gunicorn", "-w", "6", "-k", "gevent", "-b", "0.0.0.0:5000", "download:app"]

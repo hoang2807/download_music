@@ -19,6 +19,12 @@ Base = declarative_base()
 engine = create_engine(DATABASE_URL)
 Session = sessionmaker(bind=engine)
 
+# --- S3 SETUP ---
+WASABI_ACCESS_KEY = os.getenv("WASABI_ACCESS_KEY")
+WASABI_SECRET_KEY = os.getenv("WASABI_SECRET_KEY")
+WASABI_BUCKET = os.getenv("WASABI_BUCKET")
+WASABI_REGION = "ap-southeast-1"
+
 class Download(Base):
     __tablename__ = 'downloads'
     download_id = Column(String(64), primary_key=True)
@@ -56,10 +62,6 @@ def get_proxy_from_zingproxy():
 
 def upload_to_wasabi(filepath, filename):
     # Dummy - replace with boto3 or real upload
-    WASABI_ACCESS_KEY = os.getenv("WASABI_ACCESS_KEY")
-    WASABI_SECRET_KEY = os.getenv("WASABI_SECRET_KEY")
-    WASABI_BUCKET = os.getenv("WASABI_BUCKET")
-    WASABI_REGION = "ap-southeast-1"
 
     # if not os.path.exists(filepath):
     #     print(f"ERROR: File not found: {filepath}", file=sys.stderr)
@@ -134,11 +136,25 @@ def download_audio_job(download_id, search_keyword, url):
     proxy = get_proxy_from_zingproxy()
     os.makedirs(TEMP_DIR, exist_ok=True)
     expected_file = None
-    API_ENDPOINT = os.getenv("API_ENDPOINT")
     try:
-
-        video_url = url
-        title = download_id
+        search_cmd = [
+            YT_DLP_PATH,
+            '--proxy', proxy,
+            '--flat-playlist',
+            '--no-playlist',
+            '--dump-json',
+            '--retries', '1',
+            '--socket-timeout', '5',
+            '--no-check-certificate',
+            '--default-search', 'ytmusic',
+            '--quiet',
+            '--no-warnings',
+            f'ytsearch1:{search_keyword} official audio'
+        ]
+        result = subprocess.run(search_cmd, capture_output=True, text=True, check=True, timeout=180)
+        video = json.loads(result.stdout)
+        video_url = video.get('webpage_url')
+        title = video.get('title')
         slug = slugify(title)
         output_path = os.path.join(TEMP_DIR, f'{slug}.%(ext)s')
 
